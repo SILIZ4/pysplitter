@@ -67,10 +67,6 @@ class Splitter:
             segment_times = [self.convert_time(end-start) for start, end in zip(self.segment_times, self.segment_times[1:])]
             segment_names = self.segment_names.copy()
 
-            if self.is_run_finished():
-                segment_names.append("final")
-                segment_times.append(self.final_time)
-
             return (segment_names, segment_times)
 
         else:

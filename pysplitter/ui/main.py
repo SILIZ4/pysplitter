@@ -21,7 +21,7 @@ class MainWindow(QtWidgets.QWidget):
         self.splits = None
 
         self.main_layout = QtWidgets.QVBoxLayout()
-        self.segments_layout = SegmentsLayout(self.default_segments, self.splitter.get_time, self.splitter.get_current_segment)
+        self.segments_layout = SegmentsLayout(self.default_segments, self.splitter.get_time, self.splitter.get_current_segment, self.get_splits)
         self.main_layout.addLayout(self.segments_layout)
         self.main_layout.addLayout(ImportExportLayout(self.default_segments, self.set_splits, self.get_splits))
 
@@ -51,11 +51,12 @@ class MainWindow(QtWidgets.QWidget):
     def split(self):
         if self.splits is not None and not self.splitter.is_run_finished():
             self.splitter.split()
+            self._refresh_display(True)
             if self.splitter.is_run_finished():
                 self.end_run()
 
-    def _refresh_display(self):
-        self.segments_layout._refresh()
+    def _refresh_display(self, changed_split=False):
+        self.segments_layout._refresh(changed_split)
 
     def undo_split(self):
         self.segments_layout._erase_current_split()

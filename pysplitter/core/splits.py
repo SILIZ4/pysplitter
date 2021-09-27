@@ -29,26 +29,22 @@ class Splits:
         segment_names = _segment_names.copy()
         times = _times.copy()
 
-        if segment_names[-1] == "final":
-            final_time = times.pop()
-            segment_names.pop()
-        else:
-            final_time = None
-
 
         if segment_names != self.segment_names:
             print("Times not updated")
         else:
             if self.best_splits is None:
-                self.best_splits = times
+                self.best_splits = times.copy()
             else:
                 for i, (time, best_time) in enumerate(zip(times, self.best_splits)):
                     if time < best_time:
                         self.best_splits[i] = time
 
-            if final_time is not None:
-                if self.pb is None or final_time < self.pb:
-                    self.pb = final_time
+            if len(times) == len(segment_names):
+                final_time = sum(times)
+
+                if self.pb is None or final_time < sum(self.pb):
+                    self.pb = times.copy()
 
                 if self.wr is not None and final_time < self.wr:
                     self.wr = final_time
