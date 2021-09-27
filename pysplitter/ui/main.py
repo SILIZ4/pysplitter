@@ -1,35 +1,77 @@
 import sys
+import json
 from PyQt5 import QtCore, QtWidgets, QtGui
 
-from pysplit.core.splitter import Splitter
-import segments
-import import_export
+from pysplitter.core.splitter import Splitter
+from pysplitter.core.splits import Splits
 
+from pysplitter.ui.segments import SegmentsLayout
+from pysplitter.ui.import_export import ImportExportLayout
+from pysplitter.config import keymaps, refresh_delay
 
-segment_names = ["a", "b", "c"]
 
 class MainWindow(QtWidgets.QWidget):
+    default_segments = ["End"]
+
     def __init__(self, parent=None, *args):
         super().__init__(*args)
         self.setGeometry(0, 0, 200, 800)
 
-        self.splitter = Splitter(segment_names)
+        self.splitter = Splitter(self.default_segments)
+        self.splits = None
 
         self.main_layout = QtWidgets.QVBoxLayout()
-        self.segments_layout = segments.SegmentsLayout(segment_names)
+        self.segments_layout = SegmentsLayout(self.default_segments, self.splitter.get_time, self.splitter.get_current_segment)
         self.main_layout.addLayout(self.segments_layout)
-        self.main_layout.addLayout(import_export.ImportExportLayout(segment_names, self.set_splits, self.get_splits))
+        self.main_layout.addLayout(ImportExportLayout(self.default_segments, self.set_splits, self.get_splits))
+
+        self.refresh_timer = QtCore.QTimer()
+        self.refresh_timer.setInterval(int(refresh_delay*1e3))
+        self.refresh_timer.timeout.connect(self._refresh_display)
+        self.refresh_timer.start()
 
         self.setLayout(self.main_layout)
         self.setWindowTitle("PySplitter")
 
-    def set_splits(self, splits: dict):
-        segment_names = list(splits.keys())
-        self.splitter.set_segments(segment_names)
-        self.segments_layout.set_segments_names(segment_names)
+        self.key_action = {
+                keymaps["split"]: self.split,
+                keymaps["reset"]: self.reset,
+                keymaps["undo"] : self.undo_split,
+            }
 
-    def get_splits(self)->dict:
-        return self.splitter.get_time("all")
+    def set_splits(self, splits: Splits):
+        self.splits = splits
+        self.splitter.set_segments(splits.segment_names.copy())
+        self.segments_layout.clear_times()
+        self.segments_layout.set_segments_names(splits.segment_names.copy())
+
+    def get_splits(self)->Splits:
+        return self.splits
+
+    def split(self):
+        if self.splits is not None and not self.splitter.is_run_finished():
+            self.splitter.split()
+            if self.splitter.is_run_finished():
+                self.end_run()
+
+    def _refresh_display(self):
+        self.segments_layout._refresh()
+
+    def undo_split(self):
+        self.segments_layout._erase_current_split()
+        self.splitter.undo_split()
+
+    def reset(self):
+        self.splitter.reset()
+        self.segments_layout.clear_times()
+
+    def end_run(self):
+        self.splits.update_times(*self.splitter.get_time("all"))
+
+    def keyPressEvent(self, event):
+        if event.key() in self.key_action.keys():
+            self.key_action[event.key()]()
+        event.accept()
 
 
 app = QtWidgets.QApplication(sys.argv)

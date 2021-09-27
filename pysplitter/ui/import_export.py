@@ -2,6 +2,8 @@ import os, sys
 import json
 from PyQt5 import QtCore, QtWidgets, QtGui
 
+from pysplitter.core.splits import Splits
+
 
 def ask_save_file_name(prompt):
     return QtWidgets.QFileDialog.getSaveFileName(parent=None,
@@ -31,11 +33,9 @@ class ImportExportLayout(QtWidgets.QHBoxLayout):
     def load_splits(self):
         file_path, _ = ask_load_file_name("Choose the splits file")
         if file_path:
-            with open(file_path, "r") as file_stream:
-                self.set_splits(json.load(file_stream))
+            self.set_splits(Splits.load_from_file(file_path))
 
     def save_splits(self):
         file_path, _ = ask_save_file_name("Choose a file name to save the splits")
         if file_path:
-            with open(file_path, "w") as file_stream:
-                file_stream.write(json.dumps(self.get_splits()))
+            self.get_splits().write_to_file(file_path)

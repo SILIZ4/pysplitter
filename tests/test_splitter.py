@@ -1,4 +1,4 @@
-import pysplit.core.splitter
+from pysplitter.core.splitter import Splitter
 import pytest
 from time import sleep
 
@@ -9,7 +9,7 @@ timer_precision = 5e-3
 
 
 def test_gettime_segment_correctTime():
-    splitter = pysplit.core.splitter.Splitter(segment_names)
+    splitter = Splitter(segment_names)
     splitter.start()
 
     sleep(.3)
@@ -21,7 +21,7 @@ def test_gettime_segment_correctTime():
 
 
 def test_gettime_total_correctTime():
-    splitter = pysplit.core.splitter.Splitter(segment_names)
+    splitter = Splitter(segment_names)
     splitter.start()
 
     for i in range(3):
@@ -32,18 +32,20 @@ def test_gettime_total_correctTime():
 
 
 def test_gettime_all_correctTimes():
-    splitter = pysplit.core.splitter.Splitter(segment_names)
+    splitter = Splitter(segment_names)
     splitter.start()
 
-    expected_times = {}
     for segment_name, split_time in zip(segment_names, segment_times):
-        expected_times[segment_name] = split_time
         sleep(split_time)
         splitter.split()
 
-    expected_times["final"] = sum(segment_times)
-    actual_times = splitter.get_time("all")
-    print(actual_times)
+    expected_times = segment_times + [sum(segment_times)]
+    expected_names = segment_names + ["final"]
 
-    for segment_name, split_time in zip(segment_names, segment_times):
-        assert pytest.approx(actual_times[segment_name], timer_precision) == split_time
+    names, times = splitter.get_time("all")
+    print(names)
+    print(times)
+
+    assert expected_names == names
+    for expected_time, actual_time in zip(expected_times, times):
+        assert expected_time == pytest.approx(actual_time, timer_precision)
