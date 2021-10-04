@@ -1,6 +1,9 @@
 import sys
 import numpy as np
 from PyQt5 import QtCore, QtWidgets, QtGui
+from matplotlib.colors import LinearSegmentedColormap
+
+from pysplitter.config import timer_precision
 
 
 def get_title_label(text)->QtWidgets.QLabel:
@@ -15,8 +18,18 @@ def get_split_label(text)->QtWidgets.QLabel:
     return label
 
 
+def clip_at_unity(x):
+    if x>1:
+        return 1
+    elif x<-1:
+        return -1
+    return x
+
+
 class SegmentsLayout(QtWidgets.QGridLayout):
     EMPTY_TIME = "-"
+    color_bins = 60
+    delta_cmap = LinearSegmentedColormap.from_list("delta_cmap", ["#36a841", "white", "#991111"], N=color_bins)
 
     def __init__(self, segment_names, get_time, get_current_split, get_splits):
         super().__init__()
@@ -48,15 +61,37 @@ class SegmentsLayout(QtWidgets.QGridLayout):
         current_segment = self.get_current_split()
         splits = self.get_splits()
 
-        if 0 <= current_segment < len(splits.segment_names):
-            current_segment_time = self.get_time("segment")
-            self.itemAtPosition(current_segment+1, 1).widget().setText( f'{current_segment_time :.1f}')
-            self.itemAtPosition(self.rows-1, 1).widget().setText( f'{self.get_time("total") :.1f}')
+        if change_split and current_segment > 0:
+            previous_segment_time = round(self.get_time("previous"), timer_precision)
+            self.itemAtPosition(current_segment, 1).widget().setText( f'{previous_segment_time:.{timer_precision}f}')
+            if splits.pb is not None:
+                self._set_delta(previous_segment_time, splits, current_segment-1)
 
-            if splits.pb is not None and (current_segment_time >= splits.best_splits[current_segment] or change_split):
-                delta = abs(current_segment_time-splits.pb[current_segment])
-                sign = "-" if current_segment_time < splits.pb[current_segment] else "+"
-                self.itemAtPosition(current_segment+1, 2).widget().setText( f'{sign}{delta:.1f}')
+        if 0 <= current_segment < len(splits.segment_names):
+            current_segment_time = round(self.get_time("segment"), timer_precision)
+            self.itemAtPosition(current_segment+1, 1).widget().setText( f'{current_segment_time :.{timer_precision}f}')
+            self.itemAtPosition(self.rows-1, 1).widget().setText( f'{self.get_time("total") :.{timer_precision}f}')
+
+            if splits.pb is not None and current_segment_time >= splits.best_splits[current_segment]:
+                self._set_delta(current_segment_time, splits, current_segment)
+
+    def _set_delta(self, segment_time, splits, segment_number):
+        pb_time, best_split = splits.pb[segment_number], splits.best_splits[segment_number]
+        if pb_time is None:
+            return
+
+        delta = segment_time-pb_time
+        sign = "-" if segment_time < pb_time else "+"
+
+        if segment_time < best_split:
+            color_text = "gold"
+        else:
+            color = self.delta_cmap( self.color_bins*(clip_at_unity(delta)))
+            color_text = "rgb(" + ",".join(list(map(lambda x: str(int(255*x)), color[:-1]))) + ")"
+
+        self.itemAtPosition(segment_number+1, 2).widget().setText( f'{sign}{abs(round(delta, timer_precision)):.{timer_precision}f}')
+        self.itemAtPosition(segment_number+1, 2).widget().setStyleSheet("QLabel { color :"+color_text+" ; }")
+
 
     def _erase_current_split(self):
         current_segment = self.get_current_split()

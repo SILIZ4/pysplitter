@@ -8,3 +8,4 @@ keymaps = {
     }
 
 refresh_delay = 0.1  # in seconds
+timer_precision = 1  # in decimals
