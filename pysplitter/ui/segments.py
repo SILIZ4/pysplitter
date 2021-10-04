@@ -8,13 +8,23 @@ from pysplitter.config import timer_precision
 
 def get_title_label(text)->QtWidgets.QLabel:
     label = QtWidgets.QLabel(text)
-    label.setFont(QtGui.QFont('Arial', 16))
+    label.setFont(QtGui.QFont('Arial', 15))
+    label.setStyleSheet("QLabel { color : #f2f2f2; background-color: #292929; }")
+    label.setAlignment(QtCore.Qt.AlignCenter)
+    label.setMaximumHeight(25)
+    label.setMinimumHeight(25)
     return label
 
 
 def get_split_label(text)->QtWidgets.QLabel:
     label = QtWidgets.QLabel(text)
     label.setFont(QtGui.QFont('Arial', 13))
+    label.setMinimumHeight(30)
+    return label
+
+def get_time_label(text)->QtWidgets.QLabel:
+    label = get_split_label(text)
+    label.setAlignment(QtCore.Qt.AlignRight)
     return label
 
 
@@ -33,6 +43,8 @@ class SegmentsLayout(QtWidgets.QGridLayout):
 
     def __init__(self, segment_names, get_time, get_current_split, get_splits):
         super().__init__()
+        self.setSpacing(0)
+
         self.get_current_split = get_current_split
         self.get_time = get_time
         self.get_splits = get_splits
@@ -48,9 +60,16 @@ class SegmentsLayout(QtWidgets.QGridLayout):
     def _add_segment_row(self, *cols: str, is_title=False):
         assert(len(cols) == self.cols)
 
-        get_label = get_title_label if is_title else get_split_label
         for col, element in enumerate(cols):
-            self.addWidget(get_label(element), self.rows, col)
+            if is_title:
+                label = get_title_label(element)
+            else:
+                if col == 0:
+                    label = get_split_label(element)
+                else:
+                    label = get_time_label(element)
+
+            self.addWidget(label, self.rows, col)
 
         self.rows += 1
 

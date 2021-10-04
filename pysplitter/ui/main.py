@@ -16,6 +16,8 @@ class MainWindow(QtWidgets.QWidget):
     def __init__(self, parent=None, *args):
         super().__init__(*args)
         self.setGeometry(0, 0, 200, 800)
+        self.setMinimumWidth(500)
+        self.setStyleSheet("background-color: #c9c9c9;")
 
         self.splitter = Splitter(self.default_segments)
         self.splits = None
