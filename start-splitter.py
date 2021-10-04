@@ -1,4 +1,5 @@
-import os, sys
+import sys, pathlib
 
-sys.path.append("./pysplitter/ui")
+abolute_path_to_file = pathlib.Path(__file__).parent.resolve()
+sys.path.append(f"{abolute_path_to_file}/pysplitter/ui")
 import main
