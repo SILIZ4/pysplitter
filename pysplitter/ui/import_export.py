@@ -6,6 +6,15 @@ from pysplitter.core.splits import Splits
 from pysplitter.config import keymaps
 
 
+def validate_split_file_name(file_name):
+    if not file_name.endswith(".json"):
+        error_dialog = QtWidgets.QMessageBox()
+        error_dialog.setWindowTitle("Error: Incorrect file")
+        error_dialog.setText("Invalid split file name. File is not of \".json\" extension.")
+        error_dialog.exec_()
+        return False
+    return True
+
 def ask_save_file_name(prompt):
     return QtWidgets.QFileDialog.getSaveFileName(parent=None,
                     caption="prompt", directory=os.getcwd())
@@ -44,11 +53,33 @@ class ImportExportLayout(QtWidgets.QHBoxLayout):
 
 
     def load_splits(self):
-        file_path, _ = ask_load_file_name("Choose the splits file")
-        if file_path:
-            self.set_splits(Splits.load_from_file(file_path))
+        keep_asking = True
+
+        while keep_asking:
+            file_path, _ = ask_load_file_name("Choose the splits file.")
+
+            if not file_path:
+                keep_asking = False
+            else:
+                if validate_split_file_name(file_path):
+                    splits = Splits.load_from_file(file_path)
+                    if splits is not None:
+                        self.set_splits(splits)
+                        keep_asking = False
+
 
     def save_splits(self):
-        file_path, _ = ask_save_file_name("Choose a file name to save the splits")
-        if file_path:
-            self.get_splits().write_to_file(file_path)
+        keep_asking = True
+
+        while keep_asking:
+            file_path, _ = ask_save_file_name("Choose a file name to save the splits.")
+
+            if not file_path:
+                keep_asking = False
+            else:
+                if "." not in file_path:
+                    file_path += ".json"
+
+                if validate_split_file_name(file_path):
+                    self.get_splits().write_to_file(file_path)
+                    keep_asking = False

@@ -83,8 +83,7 @@ class SegmentsLayout(QtWidgets.QGridLayout):
         if change_split and current_segment > 0:
             previous_segment_time = round(self.get_time("previous"), timer_precision)
             self.itemAtPosition(current_segment, 1).widget().setText( f'{previous_segment_time:.{timer_precision}f}')
-            if splits.pb is not None:
-                self._set_delta(previous_segment_time, splits, current_segment-1)
+            self._set_delta(previous_segment_time, current_segment-1)
 
         if 0 <= current_segment < len(splits.segment_names):
             current_segment_time = round(self.get_time("segment"), timer_precision)
@@ -93,26 +92,31 @@ class SegmentsLayout(QtWidgets.QGridLayout):
 
             if splits.pb is not None:
                 if current_segment < len(splits.best_splits) and current_segment_time >= splits.best_splits[current_segment]:
-                    self._set_delta(current_segment_time, splits, current_segment)
+                    self._set_delta(current_segment_time, current_segment)
 
-    def _set_delta(self, segment_time, splits, segment_number):
-        if segment_number < len(splits.best_splits):
-            return
-        pb_time, best_split = splits.pb[segment_number], splits.best_splits[segment_number]
-        if pb_time is None:
-            return
+    def _set_delta(self, segment_time, segment_number):
+        splits = self.get_splits()
 
-        delta = segment_time-pb_time
-        sign = "-" if segment_time < pb_time else "+"
+        if splits.best_splits is None or segment_number >= len(splits.best_splits):
+            sign, delta = "+", 0
+            text_color = "gold"
 
-        if segment_time < best_split:
-            color_text = "gold"
         else:
-            color = self.delta_cmap( self.color_bins*(clip_at_unity(delta)))
-            color_text = "rgb(" + ",".join(list(map(lambda x: str(int(255*x)), color[:-1]))) + ")"
+            if splits.pb is None or segment_number >= len(splits.pb) or splits.pb[segment_number] is None:
+                return
+
+            pb_time, best_split = splits.pb[segment_number], splits.best_splits[segment_number]
+            delta = segment_time-pb_time
+            sign = "-" if segment_time < pb_time else "+"
+
+            if segment_time < best_split:
+                text_color = "gold"
+            else:
+                color = self.delta_cmap( self.color_bins*(clip_at_unity(delta)))
+                text_color = "rgb(" + ",".join(list(map(lambda x: str(int(255*x)), color[:-1]))) + ")"
 
         self.itemAtPosition(segment_number+1, 2).widget().setText( f'{sign}{abs(round(delta, timer_precision)):.{timer_precision}f}')
-        self.itemAtPosition(segment_number+1, 2).widget().setStyleSheet("QLabel { color :"+color_text+" ; }")
+        self.itemAtPosition(segment_number+1, 2).widget().setStyleSheet("QLabel { color :"+text_color+" ; }")
 
 
     def _erase_line(self, line):
