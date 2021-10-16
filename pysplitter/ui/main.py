@@ -1,13 +1,14 @@
-import sys
+import os, sys
 import json
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 from pysplitter.core.splitter import Splitter
 from pysplitter.core.splits import Splits
+from pysplitter.core.database import add_entry_in_database
 
 from pysplitter.ui.segments import SegmentsLayout
 from pysplitter.ui.import_export import ImportExportLayout
-from pysplitter.config import keymaps, refresh_delay
+from pysplitter.config import keymaps, refresh_delay, database_directory
 
 
 class MainWindow(QtWidgets.QWidget):
@@ -90,11 +91,11 @@ class MainWindow(QtWidgets.QWidget):
         if self.splits is not None:
             new_times = self.splitter.get_time("all")
 
-            if self.splits.are_new_records(*new_times):
-                qmessage = QtWidgets.QMessageBox
-                answer = qmessage.question(self,'', "Some of your best splits were beaten. Would like to update them?", qmessage.Yes | qmessage.No)
-                if answer == qmessage.Yes:
-                    self.splits.update_times(*new_times)
+            qmessage = QtWidgets.QMessageBox
+            answer = qmessage.question(self,'', "Would like to update and add the times in the database?", qmessage.Yes | qmessage.No)
+            if answer == qmessage.Yes:
+                add_entry_in_database(os.path.join(database_directory, self.splits.name), *new_times)
+                self.splits.update_times(*new_times)
 
     def closeEvent(self, event):
         if self.splitter.is_run_started():

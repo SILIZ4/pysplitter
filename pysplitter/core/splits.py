@@ -4,9 +4,10 @@ from copy import deepcopy
 
 
 class Splits:
-    information_names = {"segment_names", "pb", "best_splits", "wr"}
+    information_names = {"segment_names", "pb", "best_splits", "wr", "name"}
 
-    def __init__(self, segment_names, pb=None, best_splits=None, wr=None):
+    def __init__(self, name, segment_names, pb=None, best_splits=None, wr=None):
+        self.name = name
         self.segment_names = segment_names
         self.pb = pb
         self.best_splits = best_splits
@@ -19,7 +20,7 @@ class Splits:
         with open(file_name, "r") as file_stream:
             file_content = json.load(file_stream)
 
-        if "segment_names" not in file_content.keys():
+        if "segment_names" not in file_content.keys() or "name" not in file_content.keys():
             return
 
         split_informations = {}
