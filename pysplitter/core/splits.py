@@ -1,3 +1,4 @@
+import warnings
 import json
 
 
@@ -25,13 +26,25 @@ class Splits:
         with open(file_name, "w") as file_stream:
             json.dump(available_information, file_stream)
 
+    def get_new_best_splits(self, _segment_names, _times):
+
+        if self.best_splits is None:
+            new_best_segments = _segment_names.copy()
+        else:
+            new_best_segments = []
+            for i, (current_best, time) in enumerate(zip(self.best_splits, _times)):
+                if time < current_best:
+                    new_best_segments.append(_segment_names[i])
+
+        return new_best_segments
+
     def update_times(self, _segment_names, _times):
         segment_names = _segment_names.copy()
         times = _times.copy()
 
 
         if segment_names != self.segment_names:
-            print("Times not updated")
+            warnings.warn("Times not updated. Segment names don't match.")
         else:
             if self.best_splits is None:
                 self.best_splits = times.copy()

@@ -91,10 +91,13 @@ class SegmentsLayout(QtWidgets.QGridLayout):
             self.itemAtPosition(current_segment+1, 1).widget().setText( f'{current_segment_time :.{timer_precision}f}')
             self.itemAtPosition(self.rows-1, 1).widget().setText( f'{self.get_time("total") :.{timer_precision}f}')
 
-            if splits.pb is not None and current_segment_time >= splits.best_splits[current_segment]:
-                self._set_delta(current_segment_time, splits, current_segment)
+            if splits.pb is not None:
+                if current_segment < len(splits.best_splits) and current_segment_time >= splits.best_splits[current_segment]:
+                    self._set_delta(current_segment_time, splits, current_segment)
 
     def _set_delta(self, segment_time, splits, segment_number):
+        if segment_number < len(splits.best_splits):
+            return
         pb_time, best_split = splits.pb[segment_number], splits.best_splits[segment_number]
         if pb_time is None:
             return
@@ -112,17 +115,20 @@ class SegmentsLayout(QtWidgets.QGridLayout):
         self.itemAtPosition(segment_number+1, 2).widget().setStyleSheet("QLabel { color :"+color_text+" ; }")
 
 
-    def _erase_current_split(self):
+    def _erase_line(self, line):
+        for col in range(1, self.cols):
+            self.itemAtPosition(line, col).widget().setText(self.EMPTY_TIME)
+            self.itemAtPosition(line, col).widget().setStyleSheet("QLabel { color :"+"black"+" ; }")
+
+    def erase_current_split(self):
         current_segment = self.get_current_split()
         if current_segment > 0:
-            self.itemAtPosition(current_segment+1, 1).widget().setText(self.EMPTY_TIME)
-            self.itemAtPosition(current_segment+1, 2).widget().setText(self.EMPTY_TIME)
+            self._erase_line(current_segment+1)
 
 
     def clear_times(self):
         for i in range(1, self.rows):
-            self.itemAtPosition(i, 1).widget().setText(self.EMPTY_TIME)
-            self.itemAtPosition(i, 2).widget().setText(self.EMPTY_TIME)
+            self._erase_line(i)
 
     def set_segments_names(self, segment_names: list[str]):
         segments_number = len(segment_names)

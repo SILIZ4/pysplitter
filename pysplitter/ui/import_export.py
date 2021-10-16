@@ -3,6 +3,7 @@ import json
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 from pysplitter.core.splits import Splits
+from pysplitter.config import keymaps
 
 
 def ask_save_file_name(prompt):
@@ -14,16 +15,28 @@ def ask_load_file_name(prompt):
                     caption="prompt", directory=os.getcwd())
 
 
+class PySplitButton(QtWidgets.QPushButton):
+    def __init__(self, main_window, *args, **kwargs):
+        self.main_window = main_window
+        super().__init__(*args, **kwargs)
+
+    def event(self, event):
+        # Redirect event
+        if event.type() == QtCore.QEvent.KeyPress and event.key() in keymaps.values():
+            return self.main_window.keyPressEvent(event)
+        return QtWidgets.QPushButton.event(self, event)
+
+
 class ImportExportLayout(QtWidgets.QHBoxLayout):
-    def __init__(self, segment_names, set_splits, get_splits):
+    def __init__(self, main_window, set_splits, get_splits):
         super().__init__()
         self.get_splits = get_splits
         self.set_splits = set_splits
 
-        self.load_button = QtWidgets.QPushButton("Load splits")
+        self.load_button = PySplitButton(main_window, "Load splits")
         self.load_button.pressed.connect(self.load_splits)
 
-        self.save_button = QtWidgets.QPushButton("Save splits")
+        self.save_button = PySplitButton(main_window, "Save splits")
         self.save_button.pressed.connect(self.save_splits)
 
         self.addWidget(self.load_button)

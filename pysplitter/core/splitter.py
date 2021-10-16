@@ -51,7 +51,9 @@ class Splitter:
         return len(self.segment_times)-1
 
     def get_time(self, type: str):
-        assert(len(self.segment_times)>0)
+        if not self.segment_times:
+            return [], []
+
         current_time = self.segment_times[-1] if self.is_run_finished() else perf_counter_ns()
 
         if type == "segment":

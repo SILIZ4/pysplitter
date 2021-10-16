@@ -2,7 +2,7 @@ from PyQt5 import QtCore
 
 
 keymaps = {
-        "split": QtCore.Qt.Key.Key_S,
+        "split": QtCore.Qt.Key.Key_Space,
         "reset": QtCore.Qt.Key.Key_R,
         "undo":  QtCore.Qt.Key.Key_Backspace,
     }
