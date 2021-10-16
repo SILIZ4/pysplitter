@@ -17,5 +17,5 @@ keymaps = {
 
 database_directory = os.path.join(absolute_path_to_file, "database")
 
-refresh_delay = 0.1  # in seconds
+refresh_delay = 0.05  # in seconds
 timer_precision = 1  # in decimals

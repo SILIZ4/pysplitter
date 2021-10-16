@@ -73,6 +73,15 @@ class SegmentsLayout(QtWidgets.QGridLayout):
 
         self.rows += 1
 
+    def _get_formatted_time(self, time):
+        hours, rem = divmod(time, 3600)
+        mins, secs = divmod(rem, 60)
+        if hours:
+            return f"{int(hours):1d}:{int(mins):02d}:{secs:0{timer_precision+3}.{timer_precision}f}"
+        if mins:
+            return f"{int(mins):1d}:{secs:0{timer_precision+3}.{timer_precision}f}"
+        return f"{secs:.{timer_precision}f}s"
+
     def _set_row_segment_name(self, segment_name: str, row):
         self.itemAtPosition(row, 0).widget().setText(segment_name)
 
@@ -82,13 +91,13 @@ class SegmentsLayout(QtWidgets.QGridLayout):
 
         if change_split and current_segment > 0:
             previous_segment_time = round(self.get_time("previous"), timer_precision)
-            self.itemAtPosition(current_segment, 1).widget().setText( f'{previous_segment_time:.{timer_precision}f}')
+            self.itemAtPosition(current_segment, 1).widget().setText( self._get_formatted_time(previous_segment_time) )
             self._set_delta(previous_segment_time, current_segment-1)
 
         if 0 <= current_segment < len(splits.segment_names):
             current_segment_time = round(self.get_time("segment"), timer_precision)
-            self.itemAtPosition(current_segment+1, 1).widget().setText( f'{current_segment_time :.{timer_precision}f}')
-            self.itemAtPosition(self.rows-1, 1).widget().setText( f'{self.get_time("total") :.{timer_precision}f}')
+            self.itemAtPosition(current_segment+1, 1).widget().setText( self._get_formatted_time(current_segment_time) )
+            self.itemAtPosition(self.rows-1, 1).widget().setText( self._get_formatted_time(self.get_time("total")) )
 
             if splits.pb is not None:
                 if current_segment < len(splits.best_splits) and current_segment_time >= splits.best_splits[current_segment]:
@@ -98,8 +107,7 @@ class SegmentsLayout(QtWidgets.QGridLayout):
         splits = self.get_splits()
 
         if splits.best_splits is None or segment_number >= len(splits.best_splits):
-            sign, delta = "+", 0
-            text_color = "gold"
+            delta, text_color = 0, "gold"
 
         else:
             if splits.pb is None or segment_number >= len(splits.pb) or splits.pb[segment_number] is None:
@@ -107,7 +115,6 @@ class SegmentsLayout(QtWidgets.QGridLayout):
 
             pb_time, best_split = splits.pb[segment_number], splits.best_splits[segment_number]
             delta = segment_time-pb_time
-            sign = "-" if segment_time < pb_time else "+"
 
             if segment_time < best_split:
                 text_color = "gold"
@@ -115,7 +122,7 @@ class SegmentsLayout(QtWidgets.QGridLayout):
                 color = self.delta_cmap( self.color_bins*(clip_at_unity(delta)))
                 text_color = "rgb(" + ",".join(list(map(lambda x: str(int(255*x)), color[:-1]))) + ")"
 
-        self.itemAtPosition(segment_number+1, 2).widget().setText( f'{sign}{abs(round(delta, timer_precision)):.{timer_precision}f}')
+        self.itemAtPosition(segment_number+1, 2).widget().setText( f'{delta:+.{timer_precision}f}')
         self.itemAtPosition(segment_number+1, 2).widget().setStyleSheet("QLabel { color :"+text_color+" ; }")
 
 

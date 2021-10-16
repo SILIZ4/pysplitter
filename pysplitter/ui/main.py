@@ -88,7 +88,7 @@ class MainWindow(QtWidgets.QWidget):
         pass
 
     def _update_times(self):
-        if self.splits is not None:
+        if self.splits is not None and len(self.splitter.segment_times)>1:
             new_times = self.splitter.get_time("all")
 
             qmessage = QtWidgets.QMessageBox
@@ -98,7 +98,7 @@ class MainWindow(QtWidgets.QWidget):
                 self.splits.update_times(*new_times)
 
     def closeEvent(self, event):
-        if self.splitter.is_run_started():
+        if self.splitter.segment_times != []:
             event.ignore()
         else:
             if self.splits is not None and self.splits.new_records_set:

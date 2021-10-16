@@ -37,7 +37,7 @@ class Splits:
         return Splits(**split_informations)
 
     def write_to_file(self, file_name):
-        available_information = {"segment_names": self.segment_names}
+        available_information = {"segment_names": self.segment_names, "name": self.name}
         for information in ["pb", "best_splits", "wr"]:
             if self.__dict__[information] is not None:
                 available_information[information] = self.__dict__[information]
