@@ -2,9 +2,32 @@ import argparse
 import json
 import os
 import numpy as np
+from scipy.stats import gaussian_kde
 from matplotlib import pyplot as plt
+from matplotlib import rcParams
+from cycler import cycler
 
 from pysplitter.config import database_directory
+
+
+midblack ="#3d3d3d"
+lightgray = "#ababab"
+
+rcParams["axes.labelsize"] = 17
+rcParams["axes.facecolor"] = "white"
+rcParams["axes.grid"] = False
+rcParams["axes.edgecolor"] = lightgray
+rcParams['axes.spines.right'] = False
+rcParams['axes.spines.top'] = False
+
+rcParams["xtick.labelsize"] = 14
+rcParams["ytick.labelsize"] = 14
+rcParams["xtick.color"] = midblack
+rcParams["ytick.color"] = midblack
+
+rcParams["legend.edgecolor"] = "white"
+rcParams["legend.fontsize"] = 13
+rcParams["text.color"] = midblack
 
 
 parser = argparse.ArgumentParser()
@@ -28,11 +51,29 @@ if not os.path.isdir(database_directory):
     exit()
 
 
-file_number = len(os.listdir(database_directory))
-collected_data, labels = [], []
+pdfs, labels = [], []
+min, max = None, -1
 
 for filename in os.listdir(database_directory):
-    plt.plot(np.load(os.path.join(database_directory, filename)), marker="o", label=filename[:-4])
+    collected_data = np.load(os.path.join(database_directory, filename))
+    if collected_data.shape[0] <= 1:
+        continue
+
+    pdfs.append(gaussian_kde(collected_data, bw_method=0.2))
+
+    data_min, data_max = np.min(collected_data), np.max(collected_data)
+    if min is None or min > data_min:
+        min = data_min
+
+    if max < data_max:
+        max = data_max
+    labels.append(filename[:-4])
+
+
+xvalues = np.linspace(min, max, 100)
+for pdf, label in zip(pdfs, labels):
+    plt.plot(xvalues, pdf.evaluate(xvalues), label=label)
+
 
 plt.xlabel("Time [s]")
 plt.legend()
