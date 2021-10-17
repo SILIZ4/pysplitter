@@ -60,7 +60,7 @@ class MainWindow(QtWidgets.QWidget):
         self.splitter.undo_split()
 
     def reset(self):
-        self._update_times()
+        self._ask_update_times()
         self.splitter.reset()
         self.segments_layout.clear_times()
 
@@ -85,9 +85,9 @@ class MainWindow(QtWidgets.QWidget):
         self.segments_layout._refresh(changed_split)
 
     def _end_run(self):
-        pass
+        self._ask_update_times()
 
-    def _update_times(self):
+    def _ask_update_times(self):
         if self.splits is not None and len(self.splitter.segment_times)>1:
             new_times = self.splitter.get_time("all")
 
