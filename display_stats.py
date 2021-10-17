@@ -32,10 +32,8 @@ file_number = len(os.listdir(database_directory))
 collected_data, labels = [], []
 
 for filename in os.listdir(database_directory):
-    collected_data.append( np.load(os.path.join(database_directory, filename)) )
-    labels.append(filename.rstrip(".npy"))
+    plt.plot(np.load(os.path.join(database_directory, filename)), marker="o", label=filename[:-4])
 
-plt.hist(collected_data, label=labels)
 plt.xlabel("Time [s]")
 plt.legend()
 plt.tight_layout()
