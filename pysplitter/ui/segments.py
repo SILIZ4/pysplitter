@@ -8,23 +8,22 @@ from pysplitter.config import timer_precision
 
 def get_title_label(text)->QtWidgets.QLabel:
     label = QtWidgets.QLabel(text)
-    label.setFont(QtGui.QFont('Arial', 15))
+    label.setFont(QtGui.QFont('Arial', 18))
     label.setStyleSheet("QLabel { color : #f2f2f2; background-color: #292929; }")
     label.setAlignment(QtCore.Qt.AlignCenter)
     label.setMaximumHeight(25)
     label.setMinimumHeight(25)
     return label
 
-
 def get_split_label(text)->QtWidgets.QLabel:
     label = QtWidgets.QLabel(text)
-    label.setFont(QtGui.QFont('Arial', 13))
+    label.setFont(QtGui.QFont('Arial', 16))
     label.setMinimumHeight(30)
     return label
 
 def get_time_label(text)->QtWidgets.QLabel:
     label = get_split_label(text)
-    label.setAlignment(QtCore.Qt.AlignRight)
+    label.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignVCenter)
     return label
 
 
@@ -37,7 +36,7 @@ def clip_at_unity(x):
 
 
 class SegmentsLayout(QtWidgets.QGridLayout):
-    EMPTY_TIME = "-"
+    EMPTY_TIME = "-  "
     color_bins = 60
     delta_cmap = LinearSegmentedColormap.from_list("delta_cmap", ["#36a841", "white", "#991111"], N=color_bins)
 
@@ -54,7 +53,7 @@ class SegmentsLayout(QtWidgets.QGridLayout):
 
         self._add_segment_row("Segment name", "Segment time", "Delta", is_title=True)
         for i in range(1, self.rows):
-            self._add_segment_row(segment_names[i-1], self.EMPTY_TIME, self.EMPTY_TIME)
+            self._add_segment_row(segment_names[i-1], self.EMPTY_TIME, self.EMPTY_TIME, is_title=False)
         self._add_segment_row("Total time", self.EMPTY_TIME, "")
 
     def _add_segment_row(self, *cols: str, is_title=False):
@@ -65,7 +64,7 @@ class SegmentsLayout(QtWidgets.QGridLayout):
                 label = get_title_label(element)
             else:
                 if col == 0:
-                    label = get_split_label(element)
+                    label = get_split_label(" "+element)
                 else:
                     label = get_time_label(element)
 
@@ -84,6 +83,20 @@ class SegmentsLayout(QtWidgets.QGridLayout):
 
     def _set_row_segment_name(self, segment_name: str, row):
         self.itemAtPosition(row, 0).widget().setText(segment_name)
+
+    def _set_row_color(self, row, *args, **kwargs):
+        for col in range(self.cols):
+            self._set_element_color(row, col, *args, **kwargs)
+
+    def _set_element_color(self, row, col, textcolor=None, background=None):
+        _textcolor, _background = textcolor, background
+        if textcolor is None:
+            _textcolor = "#384459" if row%2==1 else "#e8effa"
+        if background is None:
+            _background = "#b2c0d6" if row%2==1 else "#556787"
+
+        self.itemAtPosition(row, col).widget()\
+                .setStyleSheet("QLabel { color : "+_textcolor+"; background-color: "+_background+"; }")
 
     def _refresh(self, change_split=False):
         current_segment = self.get_current_split()
@@ -123,36 +136,40 @@ class SegmentsLayout(QtWidgets.QGridLayout):
                 text_color = "rgb(" + ",".join(list(map(lambda x: str(int(255*x)), color[:-1]))) + ")"
 
         self.itemAtPosition(segment_number+1, 2).widget().setText( f'{delta:+.{timer_precision}f}')
-        self.itemAtPosition(segment_number+1, 2).widget().setStyleSheet("QLabel { color :"+text_color+" ; }")
+        self._set_element_color(segment_number+1, 2, textcolor=text_color)
+        #self.itemAtPosition(segment_number+1, 2).widget().setStyleSheet("QLabel { color :"+text_color+" ; }")
 
 
-    def _erase_line(self, line):
+    def _erase_row(self, row):
         for col in range(1, self.cols):
-            self.itemAtPosition(line, col).widget().setText(self.EMPTY_TIME)
-            self.itemAtPosition(line, col).widget().setStyleSheet("QLabel { color :"+"black"+" ; }")
+            self.itemAtPosition(row, col).widget().setText(self.EMPTY_TIME)
 
     def erase_current_split(self):
         current_segment = self.get_current_split()
         if current_segment > 0:
-            self._erase_line(current_segment+1)
+            self._erase_row(current_segment+1)
+            self._set_row_color(current_segment+1)
 
 
     def clear_times(self):
         for i in range(1, self.rows):
-            self._erase_line(i)
+            self._erase_row(i)
+            if i < self.rows-1:
+                self._set_row_color(i)
 
     def set_segments_names(self, segment_names: list[str]):
         segments_number = len(segment_names)
-        line_number = max([segments_number+1, self.rows])
+        row_number = max([segments_number+1, self.rows])
 
-        for i in range(1, line_number):
+        for i in range(1, row_number):
             if i < segments_number+1:
                 if i < self.rows:
-                    self._set_row_segment_name(segment_names[i-1], i)
+                    self._set_row_segment_name(" "+segment_names[i-1], i)
                 else:
                     self._add_segment_row(segment_names[i-1], self.EMPTY_TIME, self.EMPTY_TIME)
             else:
                 self._set_row_segment_name("", i)
+            self._set_row_color(i)
 
         if segments_number < self.rows-1:
             self._set_row_segment_name("Total time", self.rows-1)

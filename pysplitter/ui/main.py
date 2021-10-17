@@ -28,7 +28,7 @@ class MainWindow(QtWidgets.QWidget):
 
         self.setGeometry(0, 0, 200, 800)
         self.setMinimumWidth(500)
-        self.setStyleSheet("background-color: #c9c9c9;")
+        self.setStyleSheet("background-color: #292c30; color: #e8effa;")
 
         self.splitter = Splitter(self.default_segments)
         self.splits = None
@@ -37,6 +37,7 @@ class MainWindow(QtWidgets.QWidget):
         self.segments_layout = SegmentsLayout(self.default_segments, self.splitter.get_time, self.splitter.get_current_segment, self.get_splits)
         self.main_layout.addLayout(self.segments_layout)
         self.import_export_layout = ImportExportLayout(self, self.set_splits, self.get_splits)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.addLayout(self.import_export_layout)
 
         self.refresh_timer = QtCore.QTimer()
