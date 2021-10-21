@@ -2,16 +2,19 @@ import os, sys
 import json
 from PyQt5 import QtCore, QtWidgets, QtGui
 
-from pysplitter.core.splits import Splits
+from pysplitter.core.splits import Splits, InvalidSplitError
 from pysplitter.config import keymaps
 
 
+def display_error_dialog(message):
+    error_dialog = QtWidgets.QMessageBox()
+    error_dialog.setWindowTitle("Error: Incorrect split file.")
+    error_dialog.setText(message)
+    error_dialog.exec_()
+
 def validate_split_file_name(file_name):
     if not file_name.endswith(".json"):
-        error_dialog = QtWidgets.QMessageBox()
-        error_dialog.setWindowTitle("Error: Incorrect file")
-        error_dialog.setText("Invalid split file name. File is not of \".json\" extension.")
-        error_dialog.exec_()
+        display_error_dialog("Invalid split file. File is not of \".json\" extension.")
         return False
     return True
 
@@ -62,10 +65,14 @@ class ImportExportLayout(QtWidgets.QHBoxLayout):
                 keep_asking = False
             else:
                 if validate_split_file_name(file_path):
-                    splits = Splits.load_from_file(file_path)
-                    if splits is not None:
+                    try:
+                        splits = Splits.load_from_file(file_path)
                         self.set_splits(splits)
                         keep_asking = False
+
+                    except InvalidSplitError as err:
+                        display_error_dialog(err.message)
+
 
 
     def save_splits(self):

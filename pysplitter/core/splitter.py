@@ -2,10 +2,13 @@ from time import perf_counter_ns
 
 
 class Splitter:
+    RUN_STARTED = -1
+    RUN_RESETED = -2
+
     def __init__(self, segment_names: list[str]):
         assert(len(segment_names)>0)
         self.segment_names = segment_names
-        self.final_time = None
+        self.final_time = self.RUN_RESETED
         self.segment_times = []
 
     def set_segments(self, segment_names: list[str]):
@@ -15,7 +18,7 @@ class Splitter:
 
 
     def start(self):
-        self.final_time = -1
+        self.final_time = self.RUN_STARTED
         self.segment_times = [perf_counter_ns()]
 
     def split(self):
@@ -28,7 +31,7 @@ class Splitter:
                 self._end()
 
     def reset(self):
-        self.final_time = -2
+        self.final_time = self.RUN_RESETED
         self.segment_times = []
 
     def undo_split(self):
@@ -42,7 +45,7 @@ class Splitter:
         return len(self.segment_times) > len(self.segment_names)
 
     def is_run_started(self)->bool:
-        return len(self.segment_times) > 0 and self.final_time == -1
+        return len(self.segment_times) > 0 and self.final_time == self.RUN_STARTED
 
     def convert_time(self, time: int)->float:
         return time/1e9
@@ -69,6 +72,8 @@ class Splitter:
             segment_times = [self.convert_time(end-start) for start, end in zip(self.segment_times, self.segment_times[1:])]
             segment_names = self.segment_names.copy()
 
+            if self.is_run_finished():
+                return (segment_names, segment_times, self.final_time)
             return (segment_names, segment_times)
 
         else:

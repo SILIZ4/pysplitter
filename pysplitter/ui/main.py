@@ -61,7 +61,8 @@ class MainWindow(QtWidgets.QWidget):
         self.splitter.undo_split()
 
     def reset(self):
-        self._ask_update_times()
+        if not self.splitter.is_run_finished():
+            self._ask_update_times()
         self.splitter.reset()
         self.segments_layout.clear_times()
 

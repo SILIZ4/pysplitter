@@ -13,7 +13,7 @@ from pysplitter.config import database_directory
 midblack ="#3d3d3d"
 lightgray = "#ababab"
 
-rcParams["axes.labelsize"] = 17
+rcParams["axes.labelsize"] = 15
 rcParams["axes.facecolor"] = "white"
 rcParams["axes.grid"] = False
 rcParams["axes.edgecolor"] = lightgray
@@ -53,11 +53,15 @@ if not os.path.isdir(database_directory):
 
 pdfs, labels = [], []
 min, max = None, -1
+final_times = False
 
 for filename in os.listdir(database_directory):
     collected_data = np.load(os.path.join(database_directory, filename))
     if collected_data.shape[0] <= 1:
         continue
+
+    if filename == "__final_time.npy":
+        final_times = True
 
     pdfs.append(gaussian_kde(collected_data, bw_method=0.2))
 
@@ -70,12 +74,25 @@ for filename in os.listdir(database_directory):
     labels.append(filename[:-4])
 
 
-xvalues = np.linspace(min, max, 100)
+if final_times:
+    fig, axes = plt.subplots(2)
+else:
+    fig, axes = [plt.subplots(1)]
+
+xvalues = np.linspace(min, max, 300)
+if final_times:
+    final_time_index = labels.index("__final_time")
+    axes[1].plot(xvalues, pdfs[final_time_index].evaluate(xvalues), label="Final time")
+
+    pdfs.pop(final_time_index)
+    labels.pop(final_time_index)
+
 for pdf, label in zip(pdfs, labels):
-    plt.plot(xvalues, pdf.evaluate(xvalues), label=label)
+    axes[0].plot(xvalues, pdf.evaluate(xvalues), label=label)
 
+for ax in axes:
+    ax.set_xlabel("Time [s]")
+    ax.legend()
 
-plt.xlabel("Time [s]")
-plt.legend()
 plt.tight_layout()
 plt.show()

@@ -123,10 +123,10 @@ class SegmentsLayout(QtWidgets.QGridLayout):
             delta, text_color = 0, "gold"
 
         else:
-            if splits.pb is None or segment_number >= len(splits.pb) or splits.pb[segment_number] is None:
+            if splits.pb is None or segment_number >= len(splits.pb_splits) or splits.pb_splits[segment_number] is None:
                 return
 
-            pb_time, best_split = splits.pb[segment_number], splits.best_splits[segment_number]
+            pb_time, best_split = splits.pb_splits[segment_number], splits.best_splits[segment_number]
             delta = segment_time-pb_time
 
             if segment_time < best_split:
@@ -137,7 +137,6 @@ class SegmentsLayout(QtWidgets.QGridLayout):
 
         self.itemAtPosition(segment_number+1, 2).widget().setText( f'{delta:+.{timer_precision}f}')
         self._set_element_color(segment_number+1, 2, textcolor=text_color)
-        #self.itemAtPosition(segment_number+1, 2).widget().setStyleSheet("QLabel { color :"+text_color+" ; }")
 
 
     def _erase_row(self, row):
