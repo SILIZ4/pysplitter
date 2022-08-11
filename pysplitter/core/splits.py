@@ -21,12 +21,12 @@ class InvalidSplitError(Exception):
 
 class Splits:
     information_types = {
-                "segment_names": (list, str),
-                "pb": (float),
-                "pb_splits": (list, float),
-                "best_splits": (list, float),
-                "wr": (float),
-                "name": (str)
+                "segment_names": [list, str],
+                "pb": [float],
+                "pb_splits": [list, float],
+                "best_splits": [list, float],
+                "wr": [float],
+                "name": [str]
             }
     information_names = set(information_types.keys())
 
@@ -77,8 +77,8 @@ class Splits:
                     raise InvalidSplitError(f"Invalid split file. The entry \"{information}\" is not of type {expected_types}.")
 
 
-        if file_content["split_names"]:
-            raise InvalidSplitError("Invalid split file. The \"split_names\" entry is empty.")
+        if file_content["segment_names"] == []:
+            raise InvalidSplitError("Invalid split file. The \"segment_names\" entry is empty.")
 
         if file_content["name"] == "":
             raise InvalidSplitError("Invalid split file. The \"name\" entry is empty.")
