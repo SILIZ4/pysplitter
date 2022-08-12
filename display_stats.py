@@ -54,9 +54,9 @@ with open(args.split_filename, "r") as file_stream:
 
     segment_names = args.s if args.s else split_file_content["segment_names"]
 
-    database_directory = os.path.join("..", database_directory, split_file_content["name"])
+    database_file = os.path.join("..", database_directory, split_file_content["name"] + ".json")
 
-if not os.path.isdir(database_directory):
+if not os.path.isfile(database_file):
     print("No data acquired for this run.")
     exit()
 
@@ -64,25 +64,26 @@ if args.sorting not in valid_sorting:
     raise ValueError(f'Sorting "{args.sorting}" invalid.')
 
 
+
+# Compute statistics
+
 segments_data = []
-final_times_set = False
-
-# Collect and sort statistics
-
 segment_names.append("__final_time")
 found_segments = []
+
+with open(database_file, "r") as file_stream:
+    speedrun_data = json.load(file_stream)
+
 for segment_name in segment_names:
-    file_path = os.path.join(database_directory, segment_name+".npy")
-    if not os.path.isfile(file_path):
+    if speedrun_data.get(segment_name) is None:
         print(f'Skipping segment "{segment_name}". Data not found.')
         continue
 
-    collected_data = np.load(file_path)
-    if collected_data.shape[0] <= 1:
-        continue
+    collected_data = speedrun_data[segment_name]
 
-    if segment_name == "__final_time":
-        final_times_set = True
+    if len(collected_data) <= 1:
+        print(f'Skipping segment "{segment_name}". Insufficient data to provide statistics.')
+        continue
 
     segment = {}
     segment["min"] = np.min(collected_data)
@@ -115,7 +116,9 @@ print(segments_no_final.sort_values("rel std", ascending=False).head(5)[["std"]]
 # Plot
 
 group_size = 5
+final_times_set = "__final_time" in segments_data.keys()
 group_number = int(np.ceil((segments_data.shape[0]-final_times_set)/group_size) + final_times_set)
+print(group_number)
 
 fig, axes = plt.subplots(
                 group_number,

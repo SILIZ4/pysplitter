@@ -4,7 +4,7 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 
 from pysplitter.core.splitter import Splitter
 from pysplitter.core.splits import Splits
-from pysplitter.core.database import add_entry_in_database
+from pysplitter.core.database import update_database
 
 from pysplitter.ui.segments import SegmentsLayout
 from pysplitter.ui.import_export import ImportExportLayout
@@ -96,7 +96,7 @@ class MainWindow(QtWidgets.QWidget):
             qmessage = QtWidgets.QMessageBox
             answer = qmessage.question(self,'', "Would like to update and add the times in the database?", qmessage.Yes | qmessage.No)
             if answer == qmessage.Yes:
-                add_entry_in_database(os.path.join(database_directory, self.splits.name), *new_times)
+                update_database(database_directory, self.splits.name, *new_times)
                 self.splits.update_times(*new_times)
 
     def closeEvent(self, event):

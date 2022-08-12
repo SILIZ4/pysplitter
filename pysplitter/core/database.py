@@ -1,29 +1,44 @@
 import os
+import json
 import warnings
 import numpy as np
 
-def _add_value_in_file(file_name, value):
-    if os.path.isfile(file_name+".npy"):
-        database_times = np.load(file_name+".npy")
+
+def _create_or_append_time_to_database(database, segment_name, time):
+    if database.get(segment_name) is None:
+        database[segment_name] = [time]
     else:
-        database_times = np.array([], dtype=np.double)
-
-    database_times = np.append(database_times, value)
-    np.save(file_name, database_times.astype(np.double))
+        database[segment_name].append(time)
 
 
-def add_entry_in_database(database_dir, segment_names, times, final_time=None):
-    if os.path.isfile(database_dir):
-        warnings.warn("Could not update database. Database directory is a file")
-        return
-
-    if not os.path.isdir(database_dir):
-        os.makedirs(database_dir)
-
+def _append_times_to_database(database, segment_names, times, final_time=None):
     for segment, time in zip(segment_names, times):
-        file_name = os.path.join(database_dir, segment)
-        _add_value_in_file(file_name, time)
+        _create_or_append_time_to_database(database, segment, time)
 
     if final_time is not None:
-        file_name = os.path.join(database_dir, "__final_time")
-        _add_value_in_file(file_name, final_time)
+        _create_or_append_time_to_database(database, "__final_time", final_time)
+
+
+def _load_database(file_name):
+    if not os.path.isfile(file_name):
+        return {}
+
+    with open(file_name, "r") as file_stream:
+        return json.load(file_stream)
+
+
+def _write_database(database, file_name):
+    with open(file_name, "w") as file_stream:
+        database = json.dump(database, file_stream)
+
+
+def update_database(database_dir, speedrun_name, segment_names, times, final_time=None):
+    if not os.path.isdir(database_dir):
+        warnings.warn(f'Could not update database. Database directory "{database_dir}" does not exist.')
+        return
+
+    file_name = os.path.join(database_dir, speedrun_name+".json")
+
+    database = _load_database(file_name)
+    _append_times_to_database(database, segment_names, times, final_time)
+    _write_database(database, file_name)
