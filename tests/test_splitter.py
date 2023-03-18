@@ -1,51 +1,116 @@
-from pysplitter.core.splitter import Splitter
+from pysplitter.core.splitter import Splitter, TimeInformation
 import pytest
 from time import sleep
 
 
 segment_names = ["a", "b", "c", "d"]
-segment_times = [0.2, 0.4, 0.4, 0.3]
-timer_precision = 5e-3
+splits = [0.02, 0.04, 0.07, 0.01]
+timer_precision = 1e-3 # seconds
 
 
-def test_gettime_segment_correctTime():
+def compare_time(time1, time2, abs=timer_precision, **kwargs):
+    assert pytest.approx(time1, abs=abs, **kwargs) == time2
+
+
+def test_initial_flags():
     splitter = Splitter(segment_names)
-    splitter.start()
+    assert splitter.is_ready == True
+    assert splitter.is_ongoing == False
+    assert splitter.has_run_ended == False
 
-    sleep(.3)
-    assert pytest.approx(splitter.get_time("segment"), timer_precision) == .3
+
+def test_runstarted_flags():
+    splitter = Splitter(segment_names)
     splitter.split()
 
-    sleep(.5)
-    assert pytest.approx(splitter.get_time("segment"), timer_precision) == .5
-
-
-def test_gettime_total_correctTime():
-    splitter = Splitter(segment_names)
-    splitter.start()
-
-    for i in range(3):
-        sleep(0.33)
+    for split in splits:
+        assert splitter.is_ready == False
+        assert splitter.is_ongoing == True
+        assert splitter.has_run_ended == False
         splitter.split()
 
-    assert pytest.approx(splitter.get_time("total"), timer_precision) == .99
 
-
-def test_gettime_all_correctTimes():
+def test_runended_flags():
     splitter = Splitter(segment_names)
-    splitter.start()
+    splitter.split()
 
-    for segment_name, split_time in zip(segment_names, segment_times):
-        sleep(split_time)
+    for split in splits:
         splitter.split()
 
-    expected_times = segment_times + [sum(segment_times)]
-    expected_names = segment_names + ["final"]
+    assert splitter.is_ready == False
+    assert splitter.is_ongoing == False
+    assert splitter.has_run_ended == True
 
-    names, times = splitter.get_time("all")
-    print(names)
-    print(times)
 
-    assert expected_names == names
-    for expected_time, actual_time in zip(expected_times, times):
-        assert expected_time == pytest.approx(actual_time, timer_precision)
+def test_finishedrunreset_flags():
+    splitter = Splitter(segment_names)
+    splitter.split()
+
+    for split in splits:
+        splitter.split()
+    splitter.reset()
+
+    assert splitter.is_ready == True
+    assert splitter.is_ongoing == False
+    assert splitter.has_run_ended == False
+
+
+def test_unfinishedrunreset_flags():
+    splitter = Splitter(segment_names)
+    splitter.split()
+    splitter.split()
+    splitter.reset()
+
+    assert splitter.is_ready == True
+    assert splitter.is_ongoing == False
+    assert splitter.has_run_ended == False
+
+
+def test_gettime_segment():
+    splitter = Splitter(segment_names)
+    splitter.split()
+
+    for split in splits:
+        sleep(split)
+        compare_time(splitter.get_time(TimeInformation.CURRENT_SEGMENT), split)
+        splitter.split()
+
+
+def test_gettime_total():
+    splitter = Splitter(segment_names)
+    splitter.split()
+
+    for split in splits:
+        sleep(split)
+        splitter.split()
+
+    compare_time(splitter.get_time(TimeInformation.CURRENT_TOTAL_TIME), sum(splits))
+
+
+def test_gettime_allsegments():
+    splitter = Splitter(segment_names)
+    splitter.split()
+
+    for split in splits:
+        sleep(split)
+        splitter.split()
+    segment_times, final_time = splitter.get_time(TimeInformation.ALL_SEGMENTS)
+
+    compare_time(final_time, sum(splits))
+    for expected_time, actual_time in zip(splits, segment_times.values()):
+        compare_time(expected_time, actual_time)
+
+
+def test_timesfixed_afterended():
+    splitter = Splitter(segment_names)
+    splitter.split()
+
+    for split in splits:
+        sleep(split)
+        splitter.split()
+    sleep(0.1)
+
+    segment_times, final_time = splitter.get_time(TimeInformation.ALL_SEGMENTS)
+    compare_time(final_time, sum(splits))
+    for expected_time, actual_time in zip(splits, segment_times.values()):
+        compare_time(expected_time, actual_time)

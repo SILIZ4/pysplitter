@@ -1,14 +1,15 @@
-import os, sys
-import json
-from PyQt5 import QtCore, QtWidgets, QtGui
+import sys
+import warnings
+from PyQt5 import QtCore, QtWidgets
 
-from pysplitter.core.splitter import Splitter
-from pysplitter.core.splits import Splits
+from pysplitter.core.splitter import Splitter, TimeInformation
+from pysplitter.core.records import SpeedrunRecords
 from pysplitter.core.database import update_database
 
 from pysplitter.ui.segments import SegmentsLayout
 from pysplitter.ui.import_export import ImportExportLayout
-from pysplitter.config import keymaps, refresh_delay, database_directory
+from pysplitter.ui.utils import ask_yes_no_dialog
+from pysplitter.config import keymaps, refresh_delay, database_directory, ask_update_database, use_database
 
 
 class MainWindow(QtWidgets.QWidget):
@@ -21,22 +22,24 @@ class MainWindow(QtWidgets.QWidget):
                 keymaps["split"]:       self.split,
                 keymaps["reset"]:       self.reset,
                 keymaps["undo"]:        self.undo_split,
-                keymaps["load splits"]: self.load_splits,
-                keymaps["save splits"]: self.save_splits,
-                keymaps["quit"]:        self.close
+                keymaps["load records"]: self.load_records,
+                keymaps["save records"]: self.save_records,
+                keymaps["quit"]:        self.closeEvent
             }
 
         self.setGeometry(0, 0, 200, 800)
         self.setMinimumWidth(500)
         self.setStyleSheet("background-color: #292c30; color: #e8effa;")
 
-        self.splitter = Splitter(self.default_segments)
-        self.splits = None
+        self._splitter = Splitter(self.default_segments)
+        self.records = None
 
         self.main_layout = QtWidgets.QVBoxLayout()
-        self.segments_layout = SegmentsLayout(self.default_segments, self.splitter.get_time, self.splitter.get_current_segment, self.get_splits)
+        self.segments_layout = SegmentsLayout(
+                self.default_segments, self.get_splitter, self._get_records
+        )
         self.main_layout.addLayout(self.segments_layout)
-        self.import_export_layout = ImportExportLayout(self, self.set_splits, self.get_splits)
+        self.import_export_layout = ImportExportLayout(self, self._set_records, self._get_records)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.addLayout(self.import_export_layout)
 
@@ -48,68 +51,67 @@ class MainWindow(QtWidgets.QWidget):
         self.setLayout(self.main_layout)
         self.setWindowTitle("PySplitter")
 
+    def get_splitter(self):
+        return self._splitter
 
     def split(self):
-        if self.splits is not None and not self.splitter.is_run_finished():
-            self.splitter.split()
-            self._refresh_display(True)
-            if self.splitter.is_run_finished():
-                self._end_run()
+        if self.records is not None and (self._splitter.is_ongoing or self._splitter.is_ready):
+            self._splitter.split()
+            self._refresh_display(segment_changed=True)
 
     def undo_split(self):
         self.segments_layout.erase_current_split()
-        self.splitter.undo_split()
+        self._splitter.undo_split()
 
     def reset(self):
-        if not self.splitter.is_run_finished():
+        if self._splitter.has_run_ended:
             self._ask_update_times()
-        self.splitter.reset()
+        self._splitter.reset()
         self.segments_layout.clear_times()
 
-    def load_splits(self):
-        self.import_export_layout.load_splits()
+    def load_records(self):
+        self._ask_save_records()
+        self.import_export_layout.load_records()
 
-    def save_splits(self):
-        self.import_export_layout.save_splits()
+    def save_records(self):
+        self.import_export_layout.save_records()
 
+    def _get_records(self)->SpeedrunRecords|None:
+        return self.records
 
-
-    def get_splits(self)->Splits:
-        return self.splits
-
-    def set_splits(self, splits: Splits):
-        self.splits = splits
-        self.splitter.set_segments(splits.segment_names.copy())
-        self.segments_layout.clear_times()
+    def _set_records(self, splits: SpeedrunRecords):
+        self.reset()
+        self.records = splits
+        self._splitter = Splitter(splits.segment_names.copy())
         self.segments_layout.set_segments_names(splits.segment_names.copy())
 
-    def _refresh_display(self, changed_split=False):
-        self.segments_layout._refresh(changed_split)
-
-    def _end_run(self):
-        self._ask_update_times()
+    def _refresh_display(self, segment_changed=False):
+        self.segments_layout.refresh(segment_changed)
 
     def _ask_update_times(self):
-        if self.splits is not None and len(self.splitter.segment_times)>1:
-            new_times = self.splitter.get_time("all")
+        times = self._splitter.get_time(TimeInformation.ALL_SEGMENTS)
+        if times is not None and self.records is not None:
+            segment_times, final_time = times
 
-            qmessage = QtWidgets.QMessageBox
-            answer = qmessage.question(self,'', "Would like to update and add the times in the database?", qmessage.Yes | qmessage.No)
-            if answer == qmessage.Yes:
-                update_database(database_directory, self.splits.name, *new_times)
-                self.splits.update_times(*new_times)
+            if use_database:
+                if not ask_update_database or (ask_update_database and ask_yes_no_dialog(self, "Add times in the database?")):
+                    update_database(database_directory, self.records.name, segment_times)
 
-    def closeEvent(self, event):
-        if self.splitter.segment_times != []:
-            event.ignore()
-        else:
-            if self.splits is not None and self.splits.new_records_set:
-                qmessage = QtWidgets.QMessageBox
-                answer = qmessage.question(self,'', "Would like to save the new records?", qmessage.Yes | qmessage.No)
-                if answer == qmessage.Yes:
-                    self.save_splits()
+            if self.records.has_new_records(segment_times, final_time) and ask_yes_no_dialog(self, "Write new record splits?"):
+                self.records.update_times(segment_times, final_time)
+                if self.records.file_name is None:
+                    warnings.warn("Couldn't update records file: path set to None.")
+                else:
+                    self.records.write_to_file(self.records.file_name)
 
-            event.accept()
+    def _ask_save_records(self):
+        if self.records is not None and not self.records.records_file_up_to_date:
+            if ask_yes_no_dialog(self, "Would like to save the unsaved records before closing this speedrun?"):
+                self.save_records()
+
+    def closeEvent(self, event=None):
+        self._ask_save_records()
+        self.close()
 
     def keyPressEvent(self, event):
         if event.key() in self.key_action.keys():
@@ -118,7 +120,12 @@ class MainWindow(QtWidgets.QWidget):
         event.accept()
 
 
-app = QtWidgets.QApplication(sys.argv)
-window = MainWindow()
-window.show()
-app.exec_()
+def launch_main_window(args):
+    app = QtWidgets.QApplication(args)
+    window = MainWindow()
+    window.show()
+    app.exec_()
+
+
+if __name__ == "__main__":
+    launch_main_window(sys.argv)
