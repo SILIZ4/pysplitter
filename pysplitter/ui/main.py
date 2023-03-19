@@ -13,30 +13,30 @@ from pysplitter.config import keymaps, refresh_delay, database_directory, ask_up
 
 
 class MainWindow(QtWidgets.QWidget):
-    default_segments = ["End"]
-
+    minimum_width = 400
     def __init__(self, parent=None, *args):
         super().__init__(parent)
 
         self.key_action = {
-                keymaps["split"]:       self.split,
-                keymaps["reset"]:       self.reset,
-                keymaps["undo"]:        self.undo_split,
+                keymaps["split"]: self.split,
+                keymaps["reset"]: self.reset,
+                keymaps["undo"]: self.undo_split,
                 keymaps["load records"]: self.load_records,
                 keymaps["save records"]: self.save_records,
-                keymaps["quit"]:        self.closeEvent
+                keymaps["quit"]: self.closeEvent
             }
 
         self.setGeometry(0, 0, 200, 800)
-        self.setMinimumWidth(500)
+        self.setMinimumWidth(self.minimum_width)
+        self.resize(self.minimum_width, 150)
         self.setStyleSheet("background-color: #292c30; color: #e8effa;")
 
-        self._splitter = Splitter(self.default_segments)
+        self._splitter = Splitter([""])
         self.records = None
 
         self.main_layout = QtWidgets.QVBoxLayout()
         self.segments_layout = SegmentsLayout(
-                self.default_segments, self.get_splitter, self._get_records
+                [""], self.get_splitter, self._get_records
         )
         self.main_layout.addLayout(self.segments_layout)
         self.import_export_layout = ImportExportLayout(self, self._set_records, self._get_records)
@@ -50,6 +50,8 @@ class MainWindow(QtWidgets.QWidget):
 
         self.setLayout(self.main_layout)
         self.setWindowTitle("PySplitter")
+
+        self.load_records()
 
     def get_splitter(self):
         return self._splitter
@@ -84,6 +86,7 @@ class MainWindow(QtWidgets.QWidget):
         self.records = splits
         self._splitter = Splitter(splits.segment_names.copy())
         self.segments_layout.set_segments_names(splits.segment_names.copy())
+        self.setFixedSize(self.main_layout.sizeHint())
 
     def _refresh_display(self, segment_changed=False):
         self.segments_layout.refresh(segment_changed)

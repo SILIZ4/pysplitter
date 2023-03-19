@@ -1,3 +1,5 @@
+import warnings
+
 from PyQt5 import QtCore, QtWidgets, QtGui
 from matplotlib.colors import LinearSegmentedColormap
 
@@ -14,14 +16,17 @@ def get_title_label(text)->QtWidgets.QLabel:
     label.setFont(QtGui.QFont('Arial', 18))
     label.setStyleSheet("QLabel { color : #f2f2f2; background-color: #292929; }")
     label.setAlignment(QtCore.Qt.AlignCenter)
-    label.setMaximumHeight(25)
+    label.setMaximumHeight(50)
     label.setMinimumHeight(25)
+    label.setMinimumWidth(75)
     return label
 
 def get_segment_label(text)->QtWidgets.QLabel:
     label = QtWidgets.QLabel(text)
     label.setFont(QtGui.QFont('Arial', 16))
     label.setMinimumHeight(30)
+    label.setMaximumHeight(30)
+    label.setMinimumWidth(50)
     return label
 
 def get_time_label(text)->QtWidgets.QLabel:
@@ -54,7 +59,7 @@ class SegmentsLayout(QtWidgets.QGridLayout):
         self.rows = 0
         self.cols = 3
 
-        self._add_segment_row("Segment name", "Segment time", "Delta", is_title=True)
+        self._add_segment_row("Segment", "Time", "Delta", is_title=True)
         for i in range(1, self.rows):
             self._add_segment_row(segment_names[i-1], self.EMPTY_TIME, self.EMPTY_TIME)
         self._add_segment_row("Total time", self.EMPTY_TIME, "")
@@ -117,10 +122,9 @@ class SegmentsLayout(QtWidgets.QGridLayout):
                 self._set_row_segment_name("", i)
             self._set_row_color(i)
 
-        if segments_number < self.rows-1:
-            self._set_row_segment_name("Total time", self.rows-1)
-        else:
-            self._add_segment_row("Total time", self.EMPTY_TIME, "")
+        for i in reversed(range(segments_number+1, row_number)):
+            self._remove_segment_row(i)
+        self._add_segment_row("Total time", self.EMPTY_TIME, "")
 
     def _add_segment_row(self, *cols: str, is_title=False):
         assert(len(cols) == self.cols)
@@ -134,8 +138,18 @@ class SegmentsLayout(QtWidgets.QGridLayout):
                 else:
                     label = get_time_label(element)
             self.addWidget(label, self.rows, col)
-
         self.rows += 1
+
+    def _remove_segment_row(self, row):
+        if row <= 0 or row >= self.rows:
+            warnings.warn("No row removed in segments layout.")
+            return
+        for col in range(self.cols):
+            widget = self.itemAtPosition(row, col).widget()
+            self.removeWidget(widget)
+            if widget is not None:
+                widget.deleteLater()
+        self.rows -= 1
 
     def _get_formatted_time(self, time):
         hours, rem = divmod(round(time, timer_precision), 3600)
