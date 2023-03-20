@@ -1,15 +1,39 @@
 import argparse
-from copy import deepcopy
 import json
 import numpy as np
-import os, time
+import os
 
 from matplotlib import pyplot as plt
-from matplotlib import rcParams, ticker
+from matplotlib import rcParams
 from scipy.stats import gaussian_kde
 import pandas as pd
 
 from pysplitter.config import database_directory
+
+
+def format_time(seconds, _=None):
+    formatted_string = ""
+    element_number = 0
+
+    if seconds>=3600:
+        formatted_string += f"{int(seconds//3600)}h "
+        seconds = seconds % 3600
+        element_number += 1
+
+    if seconds>=60 or element_number > 1:
+        formatted_string += f"{int(seconds//60)}m "
+        seconds = seconds % 60
+        element_number += 1
+
+    if not element_number == 2 and (seconds >=0 or element_number<2):
+        formatted_string += f"{int(seconds)}s "
+        seconds = seconds % 1
+        element_number += 1
+
+    if not element_number == 2 and (seconds >=0 or element_number<2):
+        formatted_string += f"{int(seconds*1000)}ms "
+
+    return formatted_string
 
 
 midblack ="#3d3d3d"
@@ -53,6 +77,7 @@ with open(args.split_filename, "r") as file_stream:
         raise ValueError("Invalid split file. Entry \"name\" is missing.")
 
     segment_names = args.s if args.s else split_file_content["segment_names"]
+    best_segments = split_file_content.get("best_splits")
 
     database_file = os.path.join("..", database_directory, split_file_content["name"] + ".json")
 
@@ -64,6 +89,9 @@ if args.sorting not in valid_sorting:
     raise ValueError(f'Sorting "{args.sorting}" invalid.')
 
 
+
+if best_segments is not None:
+    print("Sum of best:", format_time(sum(best_segments)))
 
 # Compute statistics
 
@@ -80,7 +108,7 @@ for segment_name in segment_names:
         continue
 
     collected_data = speedrun_data[segment_name]
-
+    collected_data = list(filter(lambda x: x is not None, collected_data))
     if len(collected_data) <= 1:
         print(f'Skipping segment "{segment_name}". Insufficient data to provide statistics.')
         continue
@@ -96,7 +124,13 @@ for segment_name in segment_names:
     segments_data.append(segment)
     found_segments.append(segment_name)
 
+if segments_data == []:
+    print("No data to display.")
+    exit()
+
+
 segments_data = pd.DataFrame(segments_data, index=found_segments)
+final_times_set = "__final_time" in segments_data.index
 
 if args.sorting == "mean":
     segments_data.sort_values("mean", ascending=False, inplace=True)
@@ -104,25 +138,23 @@ elif args.sorting == "name":
     segments_data.sort_index(ascending=False, inplace=True)
 
 
-# Print out largest relative variance
 print("Most consistent:")
-segments_no_final = segments_data.drop("__final_time")
-print(segments_no_final.sort_values("rel std", ascending=True).head(5)[["std"]])
+segments_no_final = segments_data if not final_times_set else segments_data.drop("__final_time")
+print(segments_no_final.sort_values("std", ascending=True).head(5)[["std"]])
 
 print("Most inconsistent:")
-print(segments_no_final.sort_values("rel std", ascending=False).head(5)[["std"]])
+print(segments_no_final.sort_values("std", ascending=False).head(5)[["std"]])
 
 
 # Plot
 
 group_size = 5
-final_times_set = "__final_time" in segments_data.keys()
 group_number = int(np.ceil((segments_data.shape[0]-final_times_set)/group_size) + final_times_set)
-print(group_number)
 
 fig, axes = plt.subplots(
                 group_number,
-                figsize=(6, (2*group_number)+1)
+                figsize=(6, (2*group_number)+1),
+                num=f"PySplitter - Split distributions for run {split_file_content['name']}"
             )
 
 if group_number == 1:
@@ -160,33 +192,9 @@ for (index, row), segment_name in zip(segments_data.iterrows(), segments_data.in
 
     current_group_index += 1
 
-def time_formatter(seconds, _):
-    formatted_string = ""
-    element_number = 0
-
-    if seconds>=3600:
-        formatted_string += f"{int(seconds//3600)}h "
-        seconds = seconds % 3600
-        element_number += 1
-
-    if seconds>=60 or element_number > 1:
-        formatted_string += f"{int(seconds//60)}m "
-        seconds = seconds % 60
-        element_number += 1
-
-    if not element_number == 2 and (seconds >=0 or element_number<2):
-        formatted_string += f"{int(seconds)}s "
-        seconds = seconds % 1
-        element_number += 1
-
-    if not element_number == 2 and (seconds >=0 or element_number<2):
-        formatted_string += f"{int(seconds*1000)}ms "
-
-    return formatted_string
-
 for ax in axes:
     ax.set_yticks([])
-    ax.xaxis.set_major_formatter(time_formatter)
+    ax.xaxis.set_major_formatter(format_time)
     ax.legend()
 
 axes[-1].set_xlabel("Time [s]")
